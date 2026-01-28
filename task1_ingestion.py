@@ -4,47 +4,79 @@ import datetime
 from email.header import decode_header
 import io
 import os
+import pickle
 
-from google.oauth2.service_account import Credentials
+# Google API Imports
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
 # ================= CONFIGURATION =================
+# ⚠️ REPLACE WITH YOUR NEW APP PASSWORD
 EMAIL_USER = "invoice.project01@gmail.com"
-EMAIL_PASS = "pend sdym nkzx hrzg"   # Gmail App Password
+EMAIL_PASS = "pend sdym nkzx hrzg"
 IMAP_SERVER = "imap.gmail.com"
 
-GOOGLE_DRIVE_FOLDER_ID = "1LoRbKdiCsO4UpC2ahXcjdS4O5Nz3-ua_"
-SERVICE_ACCOUNT_FILE = "credentials.json"
+# The Label (Folder) where processed emails will be moved
+PROCESSED_LABEL = "Processed_Invoices"
 
+GOOGLE_DRIVE_FOLDER_ID = "1LoRbKdiCsO4UpC2ahXcjdS4O5Nz3-ua_"
+CREDENTIALS_FILE = "credentials1.json"
+TOKEN_FILE = "token.pickle"
+
+# Keywords to identify invoices
 INVOICE_TERMS = [
     "invoice", "bill", "payment", "receipt",
     "total", "amount", "due", "credit note", "statement"
 ]
+
+# Allowed file types (prevents uploading social media icons)
+ALLOWED_EXTENSIONS = ('.pdf', '.docx', '.doc', '.xlsx', '.csv', '.jpg', '.png')
+
+# Scope for Google Drive Access
+SCOPES = ["https://www.googleapis.com/auth/drive"]
 # =================================================
 
 
-# ---------- GOOGLE DRIVE SETUP ----------
-SCOPES = ["https://www.googleapis.com/auth/drive"]
-
+# ---------- GOOGLE DRIVE AUTHENTICATION (OAuth) ----------
 def get_drive_service():
-    if not os.path.exists(SERVICE_ACCOUNT_FILE):
-        raise FileNotFoundError("❌ credentials.json not found")
+    """Authenticates the user and returns the Drive service."""
+    creds = None
+    
+    # Check if we have a saved token from a previous run
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, 'rb') as token:
+            creds = pickle.load(token)
 
-    creds = Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE,
-        scopes=SCOPES
-    )
-    return build("drive", "v3", credentials=creds)
+    # If no valid credentials, let the user log in
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            if not os.path.exists(CREDENTIALS_FILE):
+                raise FileNotFoundError(f"❌ {CREDENTIALS_FILE} not found. Please download OAuth Client ID JSON.")
+            
+            flow = InstalledAppFlow.from_client_secrets_file(
+                CREDENTIALS_FILE, SCOPES)
+            creds = flow.run_local_server(port=0)
 
+        # Save the credentials for the next run
+        with open(TOKEN_FILE, 'wb') as token:
+            pickle.dump(creds, token)
+
+    return build('drive', 'v3', credentials=creds)
+
+# Initialize Drive Service
 drive_service = get_drive_service()
 
 
 def upload_to_drive(file_bytes, filename):
+    """Uploads a file to the specific Google Drive folder."""
     media = MediaIoBaseUpload(
         io.BytesIO(file_bytes),
         mimetype="application/octet-stream",
-        resumable=False
+        resumable=True
     )
 
     metadata = {
@@ -61,21 +93,37 @@ def upload_to_drive(file_bytes, filename):
     return uploaded["id"]
 
 
+# ---------- HELPER FUNCTIONS ----------
+def decode_str(header_value):
+    """Decodes email headers (Subject, Filename) safely."""
+    if not header_value: return ""
+    decoded_list = decode_header(header_value)
+    text_parts = []
+    for content, encoding in decoded_list:
+        if isinstance(content, bytes):
+            text_parts.append(content.decode(encoding or "utf-8", errors="ignore"))
+        else:
+            text_parts.append(str(content))
+    return "".join(text_parts)
+
+
 # ---------- MAIN LOGIC ----------
 def connect_and_fetch():
     print("Connecting to Gmail...")
-
     mail = imaplib.IMAP4_SSL(IMAP_SERVER)
     mail.login(EMAIL_USER, EMAIL_PASS)
+    
+    # 1. Ensure the 'Processed' Label Exists
+    try:
+        mail.create(PROCESSED_LABEL)
+    except imaplib.IMAP4.error:
+        pass # Label likely already exists
 
-    # ✅ Always select INBOX (mandatory for IMAP)
-    status, _ = mail.select("INBOX")
-    if status != "OK":
-        raise RuntimeError("❌ Failed to select INBOX")
+    mail.select("INBOX")
 
-    # ✅ UPDATED: fetch ALL unread emails (no label filtering)
+    # 2. Search for Unread Emails
     status, messages = mail.search(None, "UNSEEN")
-
+    
     if status != "OK" or not messages[0]:
         print("No unread emails found.")
         mail.logout()
@@ -85,67 +133,78 @@ def connect_and_fetch():
     print(f"Found {len(email_ids)} unread emails")
 
     for e_id in email_ids:
-        _, msg_data = mail.fetch(e_id, "(RFC822)")
-        msg = email.message_from_bytes(msg_data[0][1])
+        try:
+            _, msg_data = mail.fetch(e_id, "(RFC822)")
+            msg = email.message_from_bytes(msg_data[0][1])
 
-        # ----- SUBJECT -----
-        subject, encoding = decode_header(msg.get("Subject", ""))[0]
-        if isinstance(subject, bytes):
-            subject = subject.decode(encoding or "utf-8", errors="ignore")
+            # --- Extract Subject ---
+            subject = decode_str(msg.get("Subject", ""))
+            subject_lower = subject.lower()
 
-        subject_lower = subject.lower()
+            # --- Extract Body (Text + HTML) ---
+            body_content = ""
+            if msg.is_multipart():
+                for part in msg.walk():
+                    ctype = part.get_content_type()
+                    cdisp = part.get_content_disposition()
+                    if ctype in ["text/plain", "text/html"] and cdisp is None:
+                        payload = part.get_payload(decode=True)
+                        if payload: 
+                            body_content += payload.decode(errors="ignore")
+            else:
+                payload = msg.get_payload(decode=True)
+                if payload: 
+                    body_content = payload.decode(errors="ignore")
 
-        # ----- BODY -----
-        body = ""
-        if msg.is_multipart():
+            body_lower = body_content.lower()
+
+            # --- Check Conditions ---
+            found_terms = [t for t in INVOICE_TERMS if t in subject_lower or t in body_lower]
+            
+            # --- Extract Attachments ---
+            valid_attachments = []
             for part in msg.walk():
-                if part.get_content_type() == "text/plain" and part.get_content_disposition() is None:
-                    body = part.get_payload(decode=True).decode(errors="ignore")
-                    break
-        else:
-            body = msg.get_payload(decode=True).decode(errors="ignore")
+                if part.get_content_disposition() == "attachment":
+                    fname = decode_str(part.get_filename())
+                    if fname and fname.lower().endswith(ALLOWED_EXTENSIONS):
+                        valid_attachments.append((fname, part))
 
-        body_lower = body.lower()
+            is_invoice = bool(found_terms and valid_attachments)
 
-        # ----- KEYWORD MATCH -----
-        found_terms = [
-            term for term in INVOICE_TERMS
-            if term in subject_lower or term in body_lower
-        ]
+            print(f"\n📧 Processing: {subject[:50]}...")
+            
+            if is_invoice:
+                print("   ✅ Identified as Invoice.")
+                for filename, part in valid_attachments:
+                    # Clean filename
+                    clean_name = "".join(c for c in filename if c.isalnum() or c in "._- ")
+                    new_name = f"{int(datetime.datetime.now().timestamp())}_{clean_name}"
+                    
+                    # Upload
+                    file_bytes = part.get_payload(decode=True)
+                    drive_id = upload_to_drive(file_bytes, new_name)
+                    print(f"      ☁ Uploaded: {new_name}")
 
-        # ----- ATTACHMENTS -----
-        attachments = []
-        for part in msg.walk():
-            if part.get_content_disposition() == "attachment":
-                filename = part.get_filename()
-                if filename:
-                    attachments.append((filename, part))
+                # --- MOVE TO PROCESSED LABEL ---
+                result = mail.copy(e_id, PROCESSED_LABEL)
+                if result[0] == 'OK':
+                    mail.store(e_id, '+FLAGS', '\\Deleted') # Mark deleted in Inbox
+                    print(f"      📥 Moved to '{PROCESSED_LABEL}'")
+                else:
+                    print(f"      ⚠️ Failed to move email.")
+            
+            else:
+                print("   ⏭️  Skipping (Not an invoice). Left in Inbox.")
+                # Optional: Mark as Read anyway? Uncomment below line if yes.
+                # mail.store(e_id, "+FLAGS", "\\Seen") 
 
-        # ----- CLASSIFICATION -----
-        is_invoice = bool(found_terms and attachments)
+        except Exception as e:
+            print(f"   ❌ Error: {e}")
 
-        print(f"\n📧 {subject}")
-        print(f"   Keywords found: {found_terms}")
-        print(f"   Attachments: {len(attachments)}")
-        print(f"   Invoice? {'YES' if is_invoice else 'NO'}")
-
-        # ----- UPLOAD -----
-        if is_invoice:
-            for filename, part in attachments:
-                clean_name = "".join(c for c in filename if c.isalnum() or c in "._- ")
-                new_name = f"{int(datetime.datetime.now().timestamp())}_{clean_name}"
-
-                file_bytes = part.get_payload(decode=True)
-                drive_id = upload_to_drive(file_bytes, new_name)
-
-                print(f"   ☁ Uploaded to Drive | File ID: {drive_id}")
-
-            # ✅ mark email as read after successful processing
-            mail.store(e_id, "+FLAGS", "\\Seen")
-
+    # 3. Finalize: Remove emails marked as deleted
+    mail.expunge()
     mail.logout()
     print("\nDone.")
-
 
 if __name__ == "__main__":
     connect_and_fetch()
