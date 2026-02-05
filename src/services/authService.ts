@@ -1,5 +1,5 @@
 import { LoginCredentials, AuthResponse, User } from '@/types';
-import { mockUsers } from '@/data/mockData';
+import { apiClient } from './api';
 import { z } from 'zod';
 
 // Validation schema for login credentials
@@ -41,26 +41,15 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
 
   await simulateDelay();
 
-  // Mock authentication logic
-  // In production, this will call the PostgreSQL-backed API
-  const user = mockUsers.find(
-    (u) => u.username.toLowerCase() === credentials.username.toLowerCase()
-  );
-
-  if (!user) {
-    throw new Error('Invalid username or password');
+  try {
+    const response = await apiClient.post('/auth/login', credentials);
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data?.detail) {
+      throw new Error(error.response.data.detail);
+    }
+    throw new Error('Login failed. Please try again.');
   }
-
-  // Mock password check (any password works for demo)
-  // In production: Password will be validated against hashed password in PostgreSQL
-
-  // Generate mock token
-  const token = `mock-jwt-token-${user.id}-${Date.now()}`;
-
-  return {
-    user,
-    token,
-  };
 };
 
 /**

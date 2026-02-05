@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -15,9 +15,21 @@ const Login: React.FC = () => {
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  const errorRef = useRef<string>('');
+
+  // Debug error state changes
+  useEffect(() => {
+    console.log('Error state changed:', error);
+    errorRef.current = error;
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submitted with:', { username, password });
+    
+    // Only clear error on new submission, not on re-renders
+    if (isSubmitting) return;
+    
     setError('');
     
     if (!username.trim()) {
@@ -33,7 +45,9 @@ const Login: React.FC = () => {
     setIsSubmitting(true);
     
     try {
+      console.log('Attempting login...');
       await login(username, password);
+      console.log('Login successful');
       
       // Get user from localStorage to determine redirect
       const storedUser = localStorage.getItem('user');
@@ -45,10 +59,32 @@ const Login: React.FC = () => {
           navigate('/reviewer');
         }
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+    } catch (err: any) {
+      console.log('Login error:', err);
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (err.response?.data?.detail) {
+        const backendError = err.response.data.detail;
+        if (backendError === 'User not found') {
+          errorMessage = 'Username not found. Please check your username.';
+        } else if (backendError === 'Incorrect password') {
+          errorMessage = 'Incorrect password. Please try again.';
+        } else if (backendError === 'Username and password are required') {
+          errorMessage = 'Please enter both username and password.';
+        } else {
+          errorMessage = backendError;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      console.log('Setting error message:', errorMessage);
+      setError(errorMessage);
+      
+      // Prevent form from being submitted again immediately
+      setTimeout(() => {
+        setIsSubmitting(false);
+      }, 1000);
     }
   };
 
@@ -75,9 +111,18 @@ const Login: React.FC = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{error}</span>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setError('')}
+                    className="text-destructive/60 hover:text-destructive transition-colors"
+                  >
+                    ×
+                  </button>
                 </div>
               )}
               
@@ -125,15 +170,7 @@ const Login: React.FC = () => {
               </Button>
             </form>
 
-            {/* Demo Credentials Hint */}
-            <div className="mt-6 p-4 rounded-lg bg-muted/50 border border-border">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Demo Credentials</p>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p><span className="font-medium">Admin:</span> username: admin</p>
-                <p><span className="font-medium">Reviewer:</span> username: john.reviewer</p>
-                <p className="text-muted-foreground/70 italic">Any password works for demo</p>
-              </div>
-            </div>
+            
           </CardContent>
         </Card>
 

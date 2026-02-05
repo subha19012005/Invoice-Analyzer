@@ -48,6 +48,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await loginService({ username, password });
       storeAuthData(response);
       setUser(response.user);
+    } catch (error) {
+      // Re-throw the error to be handled by the component
+      throw error;
     } finally {
       setIsLoading(false);
     }

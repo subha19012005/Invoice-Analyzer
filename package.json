@@ -1,7 +1,8 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "invoice-hub",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Professional invoice management and processing system",
   "type": "module",
   "scripts": {
     "dev": "vite",
