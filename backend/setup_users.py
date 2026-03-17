@@ -1,19 +1,15 @@
 import psycopg2
 import bcrypt
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 load_dotenv()
 
-# Database connection parameters
-db_params = {
-    'host': os.getenv("DB_HOST", "localhost"),
-    'database': os.getenv("DB_NAME", "invoice"),
-    'user': os.getenv("DB_USER", "postgres"),
-    'password': os.getenv("DB_PASSWORD", "postgres123"),
-    'port': os.getenv("DB_PORT", "5432")
-}
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 def hash_password_bcrypt(password: str) -> str:
     """Hash a password using bcrypt (Python way)"""
@@ -23,7 +19,17 @@ def hash_password_bcrypt(password: str) -> str:
 
 try:
     # Connect to the database
-    conn = psycopg2.connect(**db_params)
+    if DATABASE_URL:
+        conn = psycopg2.connect(DATABASE_URL)
+    else:
+        db_params = {
+            'host': os.getenv("DB_HOST", "localhost"),
+            'database': os.getenv("DB_NAME", "invoice"),
+            'user': os.getenv("DB_USER", "postgres"),
+            'password': os.getenv("DB_PASSWORD", "postgres123"),
+            'port': os.getenv("DB_PORT", "5432")
+        }
+        conn = psycopg2.connect(**db_params)
     cursor = conn.cursor()
     
     print("Connected to PostgreSQL database successfully!")

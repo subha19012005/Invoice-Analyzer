@@ -60,9 +60,9 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
 export const logout = async (): Promise<void> => {
   await simulateDelay(300);
   
-  // Clear local storage
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('user');
+  // Clear per-tab session storage
+  sessionStorage.removeItem('authToken');
+  sessionStorage.removeItem('user');
 };
 
 /**
@@ -73,7 +73,7 @@ export const logout = async (): Promise<void> => {
 export const getCurrentUser = async (): Promise<User | null> => {
   await simulateDelay(200);
 
-  const storedUser = localStorage.getItem('user');
+  const storedUser = sessionStorage.getItem('user');
   if (!storedUser) {
     return null;
   }
@@ -101,21 +101,37 @@ export const validateToken = async (token: string): Promise<boolean> => {
  * Store auth data in local storage
  */
 export const storeAuthData = (authResponse: AuthResponse): void => {
-  localStorage.setItem('authToken', authResponse.token);
-  localStorage.setItem('user', JSON.stringify(authResponse.user));
+  sessionStorage.setItem('authToken', authResponse.token);
+  sessionStorage.setItem('user', JSON.stringify(authResponse.user));
+};
+
+/**
+ * Get stored user from current tab session
+ */
+export const getStoredUser = (): User | null => {
+  const storedUser = sessionStorage.getItem('user');
+  if (!storedUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(storedUser) as User;
+  } catch {
+    return null;
+  }
 };
 
 /**
  * Get stored token
  */
 export const getStoredToken = (): string | null => {
-  return localStorage.getItem('authToken');
+  return sessionStorage.getItem('authToken');
 };
 
 /**
  * Clear auth data
  */
 export const clearAuthData = (): void => {
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('user');
+  sessionStorage.removeItem('authToken');
+  sessionStorage.removeItem('user');
 };

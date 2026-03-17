@@ -1,9 +1,14 @@
 import psycopg2
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 # Common passwords to try
 passwords_to_try = [
@@ -17,42 +22,58 @@ passwords_to_try = [
     ""
 ]
 
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "postgres")  # Try connecting to default postgres database
 
-print("Testing PostgreSQL connection with different passwords...")
-print(f"Host: {DB_HOST}")
-print(f"Port: {DB_PORT}")
-print(f"User: {DB_USER}")
+print("Testing PostgreSQL connection...")
+if DATABASE_URL:
+    print("Mode: DATABASE_URL")
+else:
+    print("Mode: DB_* host/user/password")
+    print(f"Host: {DB_HOST}")
+    print(f"Port: {DB_PORT}")
+    print(f"User: {DB_USER}")
 print()
 
 connection_successful = False
 
-for password in passwords_to_try:
+if DATABASE_URL:
     try:
-        print(f"Trying password: {'(empty)' if password == '' else '***'}")
-        conn = psycopg2.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=password,
-            database=DB_NAME
-        )
-        print(f"✓ SUCCESS! Connected with password: {password}")
-        print(f"\nUpdate your .env file with:")
-        print(f"DB_PASSWORD={password}")
+        conn = psycopg2.connect(DATABASE_URL)
+        print("✓ SUCCESS! Connected using DATABASE_URL")
         conn.close()
         connection_successful = True
-        break
-    except psycopg2.OperationalError as e:
-        if "password authentication failed" in str(e):
-            print("✗ Password incorrect")
-        else:
-            print(f"✗ Error: {e}")
     except Exception as e:
-        print(f"✗ Unexpected error: {e}")
+        print(f"✗ Error: {e}")
+else:
+    for password in passwords_to_try:
+        try:
+            print(f"Trying password: {'(empty)' if password == '' else '***'}")
+            conn = psycopg2.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                user=DB_USER,
+                password=password,
+                database=DB_NAME
+            )
+            print(f"✓ SUCCESS! Connected with password: {password}")
+            print(f"\nUpdate your .env file with:")
+            print(f"DB_PASSWORD={password}")
+            conn.close()
+            connection_successful = True
+            break
+        except psycopg2.OperationalError as e:
+            if "password authentication failed" in str(e):
+                print("✗ Password incorrect")
+            else:
+                print(f"✗ Error: {e}")
+        except Exception as e:
+            print(f"✗ Unexpected error: {e}")
 
 if not connection_successful:
     print("\n" + "="*60)

@@ -2,12 +2,27 @@
 Centralized configuration management for Invoice Hub backend
 """
 import os
+from urllib.parse import quote_plus
+from pathlib import Path
 from dotenv import load_dotenv
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 load_dotenv()
 
 # ============= DATABASE =============
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres123@localhost:5432/invoice")
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+if not DATABASE_URL:
+    db_user = os.getenv("DB_USER", "postgres")
+    db_password = quote_plus(os.getenv("DB_PASSWORD", "postgres123"))
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = os.getenv("DB_PORT", "5432")
+    db_name = os.getenv("DB_NAME", "invoice")
+    DATABASE_URL = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
 # ============= EMAIL =============
 EMAIL_USER = os.getenv("EMAIL_USER", "invoice.project01@gmail.com")
@@ -17,7 +32,7 @@ PROCESSED_LABEL = os.getenv("PROCESSED_LABEL", "Processed_Invoices")
 
 # ============= MINDEE OCR =============
 MINDEE_API_KEY = os.getenv("MINDEE_V2_API_KEY")
-MINDEE_MODEL_ID = os.getenv("MINDEE_MODEL_ID", "1cd90980-2c6c-4d30-8952-af92c6db8786")
+MINDEE_MODEL_ID = os.getenv("MINDEE_MODEL_ID", "bb1d6757-1c08-46cb-b4b0-f17a439d57ab")
 
 # ============= GOOGLE DRIVE =============
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "1LoRbKdiCsO4UpC2ahXcjdS4O5Nz3-ua_")

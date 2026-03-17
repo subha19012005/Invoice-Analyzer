@@ -5,7 +5,8 @@ import {
   logout as logoutService, 
   storeAuthData, 
   clearAuthData,
-  getStoredToken 
+  getStoredToken,
+  getStoredUser
 } from '@/services/authService';
 
 interface AuthContextType {
@@ -27,10 +28,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       try {
         const token = getStoredToken();
-        const storedUser = localStorage.getItem('user');
+        const storedUser = getStoredUser();
         
         if (token && storedUser) {
-          setUser(JSON.parse(storedUser));
+          setUser(storedUser);
         }
       } catch (error) {
         clearAuthData();

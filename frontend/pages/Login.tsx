@@ -49,8 +49,8 @@ const Login: React.FC = () => {
       await login(username, password);
       console.log('Login successful');
       
-      // Get user from localStorage to determine redirect
-      const storedUser = localStorage.getItem('user');
+      // Get user from sessionStorage to determine redirect
+      const storedUser = sessionStorage.getItem('user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
         if (user.role === 'admin') {

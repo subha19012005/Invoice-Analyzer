@@ -12,10 +12,38 @@ import { format } from '@/lib/dateUtils';
 
 type HistorySortField = 'reviewedAt' | 'vendorName' | 'totalAmount' | 'id';
 type SortDirection = 'asc' | 'desc';
+type TimeFilter = 'all' | 'today' | 'last7' | 'last30' | 'last90';
+
+const isWithinTimeRange = (dateValue?: string, filter: TimeFilter = 'all'): boolean => {
+  if (filter === 'all') {
+    return true;
+  }
+
+  if (!dateValue) {
+    return false;
+  }
+
+  const targetDate = new Date(dateValue);
+  if (Number.isNaN(targetDate.getTime())) {
+    return false;
+  }
+
+  const now = new Date();
+  if (filter === 'today') {
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return targetDate >= startOfToday;
+  }
+
+  const days = filter === 'last7' ? 7 : filter === 'last30' ? 30 : 90;
+  const cutoff = new Date(now);
+  cutoff.setDate(cutoff.getDate() - days);
+  return targetDate >= cutoff;
+};
 
 const DecisionHistory: React.FC = () => {
   const [sortField, setSortField] = useState<HistorySortField>('reviewedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
 
   const { data: invoicesResponse, isLoading } = useQuery({
     queryKey: ['invoiceHistory'],
@@ -27,8 +55,9 @@ const DecisionHistory: React.FC = () => {
     (inv) => inv.status === 'accepted' || inv.status === 'rejected'
   ) ?? [];
 
-  const sortedProcessedInvoices = useMemo(() => {
-    const data = [...processedInvoices];
+  const filteredAndSortedProcessedInvoices = useMemo(() => {
+    const data = [...processedInvoices]
+      .filter((invoice) => isWithinTimeRange(invoice.reviewedAt || invoice.createdAt, timeFilter));
 
     data.sort((a, b) => {
       let comparison = 0;
@@ -47,7 +76,7 @@ const DecisionHistory: React.FC = () => {
     });
 
     return data;
-  }, [processedInvoices, sortField, sortDirection]);
+  }, [processedInvoices, sortField, sortDirection, timeFilter]);
 
   const columns: Column<Invoice>[] = [
     {
@@ -129,6 +158,18 @@ const DecisionHistory: React.FC = () => {
                   <SelectItem value="id">Invoice ID</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={timeFilter} onValueChange={(value) => setTimeFilter(value as TimeFilter)}>
+                <SelectTrigger className="w-[160px] h-9">
+                  <SelectValue placeholder="Time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Time</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="last7">Last 7 Days</SelectItem>
+                  <SelectItem value="last30">Last 30 Days</SelectItem>
+                  <SelectItem value="last90">Last 90 Days</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 variant="outline"
                 size="sm"
@@ -141,7 +182,7 @@ const DecisionHistory: React.FC = () => {
         </CardHeader>
         <CardContent>
           <DataTable
-            data={sortedProcessedInvoices}
+            data={filteredAndSortedProcessedInvoices}
             columns={columns}
             keyExtractor={(invoice) => invoice.id}
             isLoading={isLoading}

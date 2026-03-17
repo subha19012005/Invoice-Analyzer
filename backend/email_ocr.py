@@ -4,6 +4,7 @@ import datetime
 import io
 import os
 import pickle
+from pathlib import Path
 from email.header import decode_header
 from dotenv import load_dotenv
 
@@ -26,7 +27,9 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 
-# Load environment variables from the .env file
+# Load environment variables from project root .env first, then local fallback
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 load_dotenv()
 
 # ================= CONFIGURATION =================
@@ -46,10 +49,11 @@ SCOPES = ["https://www.googleapis.com/auth/drive"]
 EXCEL_FILE = os.getenv("EXCEL_FILE")
 
 # 🗄️ PostgreSQL Config
+DATABASE_URL = os.getenv("DATABASE_URL")
 DB_HOST = os.getenv("DB_HOST")
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
-DB_PASS = os.getenv("DB_PASS")
+DB_PASS = os.getenv("DB_PASS") or os.getenv("DB_PASSWORD")
 
 # 🧠 Mindee Config 
 MINDEE_V2_API_KEY = os.getenv("MINDEE_V2_API_KEY")
@@ -206,12 +210,15 @@ def save_to_postgres(data, drive_link, sender_email):
     print(f"      🗄️ Saving to PostgreSQL...")
     
     try:
-        conn = psycopg2.connect(
-            host=DB_HOST,
-            database=DB_NAME,
-            user=DB_USER,
-            password=DB_PASS
-        )
+        if DATABASE_URL:
+            conn = psycopg2.connect(DATABASE_URL)
+        else:
+            conn = psycopg2.connect(
+                host=DB_HOST,
+                database=DB_NAME,
+                user=DB_USER,
+                password=DB_PASS
+            )
         cur = conn.cursor()
 
         insert_query = """

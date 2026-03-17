@@ -46,7 +46,7 @@ In the application, go to Admin Dashboard → System Logs and you'll see a butto
 Once running, open your browser:
 - **Frontend:** http://localhost:8080
 - **Backend API Docs:** http://localhost:8000/docs
-- **Database:** PostgreSQL on localhost:5432/invoice
+- **Database:** PostgreSQL (Neon via `DATABASE_URL`)
 
 ## 🛑 Stopping the Application
 
@@ -108,9 +108,10 @@ npm run build
 ## ⚙️ Configuration
 
 Key environment variables are in `.env` file:
+- `DATABASE_URL` - Neon/PostgreSQL connection string (primary)
 - `EMAIL_USER` - Gmail account
 - `EMAIL_PASS` - Gmail app password
-- `DB_HOST` - PostgreSQL host
+- `DB_HOST` - PostgreSQL host (fallback only if `DATABASE_URL` is not set)
 - `MINDEE_V2_API_KEY` - Mindee OCR API key
 - `GOOGLE_DRIVE_FOLDER_ID` - Drive folder for uploads
 
@@ -130,8 +131,8 @@ Key environment variables are in `.env` file:
 - Check Mindee API key is valid
 
 **Database connection error:**
-- Ensure PostgreSQL is running
-- Check database credentials in `.env`
+- Ensure `DATABASE_URL` is valid for Neon
+- If not using `DATABASE_URL`, check `DB_*` fallback credentials in `.env`
 - Run: `python backend/create_tables.py` to initialize tables
 
 ## 📚 Documentation
