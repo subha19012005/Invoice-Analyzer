@@ -119,7 +119,7 @@ const ReviewQueue: React.FC = () => {
       header: 'Amount',
       render: (invoice) => (
         <span className="font-medium text-foreground">
-          ${invoice.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          ₹{invoice.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
         </span>
       ),
     },

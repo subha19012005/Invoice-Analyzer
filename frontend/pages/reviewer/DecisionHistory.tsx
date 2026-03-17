@@ -95,7 +95,7 @@ const DecisionHistory: React.FC = () => {
       header: 'Amount',
       render: (invoice) => (
         <span className="text-foreground">
-          ${invoice.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          ₹{invoice.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
         </span>
       ),
     },

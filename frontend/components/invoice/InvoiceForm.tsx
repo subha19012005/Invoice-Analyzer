@@ -102,7 +102,7 @@ useEffect(() => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount ($)</Label>
+            <Label htmlFor="amount">Amount (₹)</Label>
             <Input
               id="amount"
               type="number"
@@ -113,7 +113,7 @@ useEffect(() => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="tax">Tax ($)</Label>
+            <Label htmlFor="tax">Tax (₹)</Label>
             <Input
               id="tax"
               type="number"
@@ -146,8 +146,8 @@ useEffect(() => {
                       <tr key={item.id} className="border-t border-border">
                         <td className="p-3">{item.description}</td>
                         <td className="p-3 text-right">{item.quantity}</td>
-                        <td className="p-3 text-right">${item.unitPrice.toFixed(2)}</td>
-                        <td className="p-3 text-right font-medium">${item.total.toFixed(2)}</td>
+                        <td className="p-3 text-right">₹{item.unitPrice.toFixed(2)}</td>
+                        <td className="p-3 text-right font-medium">₹{item.total.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -161,17 +161,17 @@ useEffect(() => {
         <div className="bg-muted/50 rounded-lg p-4">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Subtotal</span>
-            <span>${subAmount.toFixed(2)}</span>
+            <span>₹{subAmount.toFixed(2)}</span>
           </div>
           <div className="flex justify-between items-center mt-1">
             <span className="text-muted-foreground">Tax</span>
-            <span>${formData.tax.toFixed(2)}</span>
+            <span>₹{formData.tax.toFixed(2)}</span>
           </div>
           <Separator className="my-2" />
           <div className="flex justify-between items-center">
             <span className="font-semibold">Total Amount</span>
             <span className="text-xl font-bold text-primary">
-              ${formData.amount.toFixed(2)}
+              ₹{formData.amount.toFixed(2)}
             </span>
           </div>
         </div>
