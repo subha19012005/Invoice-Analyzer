@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getInvoices } from '@/services/invoiceService';
+import { getDecisionHistory } from '@/services/invoiceService';
 import { Invoice } from '@/types';
 import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
@@ -45,15 +45,10 @@ const DecisionHistory: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
 
-  const { data: invoicesResponse, isLoading } = useQuery({
+  const { data: processedInvoices = [], isLoading } = useQuery({
     queryKey: ['invoiceHistory'],
-    queryFn: () => getInvoices(undefined, 1, 50),
+    queryFn: getDecisionHistory,
   });
-
-  // Filter to only show accepted/rejected
-  const processedInvoices = invoicesResponse?.data.filter(
-    (inv) => inv.status === 'accepted' || inv.status === 'rejected'
-  ) ?? [];
 
   const filteredAndSortedProcessedInvoices = useMemo(() => {
     const data = [...processedInvoices]

@@ -205,6 +205,70 @@ async def get_invoices(
             detail=f"Error fetching invoices: {str(e)}"
         )
 
+@router.get("/invoices/history")
+async def get_invoice_decision_history(
+    page: int = 1,
+    page_size: int = 100,
+    db: Session = Depends(get_db)
+):
+    """Get accepted/rejected invoices ordered by decision date"""
+    try:
+        query = (
+            db.query(Invoice)
+            .filter(Invoice.status.in_(["accepted", "rejected"]))
+            .order_by(Invoice.reviewed_at.desc().nullslast(), Invoice.created_at.desc())
+        )
+
+        total = query.count()
+        total_pages = (total + page_size - 1) // page_size
+
+        invoices = query.offset((page - 1) * page_size).limit(page_size).all()
+
+        invoices_data = []
+        for invoice in invoices:
+            line_items = db.query(LineItem).filter(LineItem.invoice_id == invoice.id).all()
+            invoices_data.append({
+                "id": invoice.id,
+                "invoiceNumber": invoice.invoice_number,
+                "vendorName": invoice.vendor_name,
+                "vendorEmail": invoice.vendor_email,
+                "customerName": invoice.customer_name,
+                "poNumber": invoice.po_number,
+                "invoiceDate": invoice.invoice_date.isoformat() if invoice.invoice_date else None,
+                "amount": invoice.amount,
+                "tax": invoice.tax,
+                "totalAmount": invoice.total_amount,
+                "status": invoice.status,
+                "emailSubject": invoice.email_subject,
+                "pdfUrl": invoice.pdf_url,
+                "reviewedBy": invoice.reviewed_by,
+                "reviewedAt": invoice.reviewed_at.isoformat() if invoice.reviewed_at else None,
+                "createdAt": invoice.created_at.isoformat() if invoice.created_at else None,
+                "lineItems": [
+                    {
+                        "id": item.id,
+                        "description": item.description,
+                        "quantity": item.quantity,
+                        "unitPrice": item.unit_price,
+                        "total": item.total_price
+                    }
+                    for item in line_items
+                ]
+            })
+
+        return {
+            "data": invoices_data,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+            "totalPages": total_pages
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Error fetching decision history: {str(e)}"
+        )
+
 @router.get("/invoices/{invoice_id}/file")
 async def get_invoice_file(invoice_id: int, db: Session = Depends(get_db)):
     """Stream invoice file from Google Drive for in-app preview (optimized with caching)"""

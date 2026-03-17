@@ -88,6 +88,20 @@ export const getReviewQueue = async (): Promise<Invoice[]> => {
 };
 
 /**
+ * Get reviewer decision history (accepted + rejected)
+ */
+export const getDecisionHistory = async (): Promise<Invoice[]> => {
+  const response = await apiClient.get('/invoices/history', {
+    params: {
+      page: 1,
+      page_size: 1000,
+    },
+  });
+
+  return response.data.data.map(mapInvoice);
+};
+
+/**
  * Get invoice by ID
  * 
  * Future: GET /api/invoices/:id
