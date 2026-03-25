@@ -65,7 +65,7 @@ pg_dump --data-only -h localhost -p 5432 -U postgres -d invoice_hub -f data.sql
 ```bash
 cd backend
 python create_tables.py
-python ..\scripts\legacy\hash_passwords.py  # Create initial users
+python setup_users.py  # Create initial users
 ```
 
 ### 5. Start Backend Server
@@ -108,7 +108,7 @@ JWT_ALGORITHM=HS256
 
 ## Default Users
 
-After running `scripts/legacy/hash_passwords.py`:
+After running `backend/setup_users.py`:
 - **Admin**: username `admin`, password `admin123`
 - **Reviewer**: username `reviewer`, password `reviewer123`
 

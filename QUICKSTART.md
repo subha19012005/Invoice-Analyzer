@@ -11,7 +11,7 @@ npm run start:all
 This starts both backend and frontend servers in the same terminal window with logs from both.
 
 ### Option 2: Using Batch File (Windows - Opens separate windows)
-Double-click: **`start-all.bat`**
+Double-click: **`START.bat`**
 
 This opens two separate command windows:
 - Backend on port 8000
@@ -53,7 +53,7 @@ Once running, open your browser:
 ### If using `npm run start:all`:
 Press **Ctrl+C** in the terminal to stop both servers.
 
-### If using `start-all.bat`:
+### If using `START.bat`:
 Press **Ctrl+C** in each command window, or close the windows.
 
 ## 🔐 Default Login Credentials
@@ -69,7 +69,7 @@ Password: test123
 invoice-hub/
 ├── frontend/              # React + Vite frontend
 ├── backend/               # FastAPI backend
-├── start-all.bat         # Windows batch script to start everything
+├── START.bat             # Windows batch script to start everything
 ├── start-servers.bat     # Alternative batch script
 ├── start-servers.ps1     # PowerShell script
 ├── trigger_ingestion.py  # Python script to manually trigger email ingestion

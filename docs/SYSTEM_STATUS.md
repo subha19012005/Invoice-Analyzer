@@ -60,7 +60,7 @@
 | File | Purpose |
 |------|---------|
 | `START.bat` | Complete automated startup with everything |
-| `start-all.bat` | Starts backend + frontend |
+| `START.bat` | Starts backend + frontend |
 | `trigger_ingestion.py` | Manually trigger email processing |
 | `package.json` | Updated with npm scripts |
 | `QUICKSTART.md` | Complete startup documentation |

@@ -58,6 +58,10 @@ class InvoiceUpdateSchema(BaseModel):
     notes: Optional[str] = None
     reviewed_by: Optional[str] = None  # Username of the reviewer
 
+class LineItemUpdateSchema(BaseModel):
+    id: int
+    unit_price: float
+
 class InvoiceDetailsUpdateSchema(BaseModel):
     invoice_number: Optional[str] = None
     vendor_name: Optional[str] = None
@@ -67,6 +71,7 @@ class InvoiceDetailsUpdateSchema(BaseModel):
     invoice_date: Optional[datetime] = None
     amount: Optional[float] = None
     tax: Optional[float] = None
+    line_items: Optional[List[LineItemUpdateSchema]] = None
 
 class InvoiceResponseSchema(BaseModel):
     id: int
@@ -479,6 +484,18 @@ async def update_invoice_details(
             invoice.amount = update_data.amount
         if update_data.tax is not None:
             invoice.tax = update_data.tax
+
+        if update_data.line_items:
+            for item_data in update_data.line_items:
+                line_item = (
+                    db.query(LineItem)
+                    .filter(LineItem.id == item_data.id, LineItem.invoice_id == invoice_id)
+                    .first()
+                )
+
+                if line_item:
+                    line_item.unit_price = item_data.unit_price
+                    line_item.total_price = (line_item.quantity or 0) * (item_data.unit_price or 0)
 
         invoice.total_amount = (invoice.amount or 0) + (invoice.tax or 0)
         invoice.updated_at = datetime.now()

@@ -10,10 +10,10 @@ runtime_prefixes = [
     'package.json','requirements.txt','vite.config.ts','tsconfig.json','tsconfig.app.json','tsconfig.node.json','tailwind.config.ts','postcss.config.js','eslint.config.js','components.json'
 ]
 
-startup_files = {'start-all.bat','start-servers.bat','start-servers.ps1','START.bat','trigger_ingestion.py','HOW_TO_RUN.txt','QUICKSTART.md','README.md','docs/DEPLOYMENT_NEON.md'}
+startup_files = {'start-servers.bat','start-servers.ps1','START.bat','trigger_ingestion.py','HOW_TO_RUN.txt','QUICKSTART.md','README.md','docs/DEPLOYMENT_NEON.md'}
 
 likely_legacy = {
-    'scripts/legacy/check_db.py','scripts/legacy/hash_passwords.py','scripts/legacy/invoice_ocr.py','scripts/legacy/mark_unread.py','scripts/legacy/startup.py',
+    'scripts/legacy/check_db.py','scripts/legacy/invoice_ocr.py','scripts/legacy/mark_unread.py','scripts/legacy/startup.py',
     'scripts/deprecated/backend/seed_sample_invoices.py','scripts/deprecated/backend/check_attachments.py','scripts/deprecated/backend/check_db.py',
     'scripts/deprecated/backend/check_env.py','scripts/deprecated/backend/check_invoices.py','scripts/deprecated/backend/task1_ingestion.py',
     'scripts/deprecated/backend/test_ingestion.py','scripts/deprecated/backend/test_ocr.py',

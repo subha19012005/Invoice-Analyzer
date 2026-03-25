@@ -128,4 +128,8 @@ export interface InvoiceUpdateForm {
   poNumber: string;
   amount: number;
   tax: number;
+  lineItems?: Array<{
+    id: string;
+    unitPrice: number;
+  }>;
 }

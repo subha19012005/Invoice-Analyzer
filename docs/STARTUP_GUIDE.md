@@ -44,7 +44,7 @@ python trigger_ingestion.py
 | File | Purpose |
 |------|---------|
 | `START.bat` | 🌟 **Main startup** - Does everything automatically |
-| `start-all.bat` | Starts both servers in separate windows |
+| `START.bat` | Starts both servers in separate windows |
 | `start-servers.bat` | Alternative starter script |
 | `trigger_ingestion.py` | Manually trigger email ingestion |
 | `QUICKSTART.md` | Complete documentation |
