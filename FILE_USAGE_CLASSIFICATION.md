@@ -11,7 +11,6 @@ Status legend: `Used` = runtime/startup path, `Support` = docs/tests/ops, `Likel
 | `HOW_TO_RUN.txt` | Used | Referenced startup/deployment flow |
 | `QUICKSTART.md` | Used | Referenced startup/deployment flow |
 | `README.md` | Used | Referenced startup/deployment flow |
-| `START.bat` | Used | Referenced startup/deployment flow |
 | `backend/.env` | Support | Project/support file |
 | `backend/Ingestion_Log.xlsx` | Support | Project/support file |
 | `backend/Invoice_Log_Highlighted.xlsx` | Support | Project/support file |
@@ -31,7 +30,6 @@ Status legend: `Used` = runtime/startup path, `Support` = docs/tests/ops, `Likel
 | `backend/mark_unread.py` | Support | Project/support file |
 | `backend/migrate_add_review_fields.py` | Support | Project/support file |
 | `backend/models.py` | Used | Runtime build/server path |
-| `backend/reset_postgres_password.bat` | Support | Operational script |
 | `backend/routes/__init__.py` | Used | Runtime build/server path |
 | `backend/routes/auth.py` | Used | Runtime build/server path |
 | `backend/routes/invoices.py` | Used | Runtime build/server path |
@@ -169,7 +167,6 @@ Status legend: `Used` = runtime/startup path, `Support` = docs/tests/ops, `Likel
 | `scripts/deprecated/legacy/invoice_ocr.py` | Likely-Unused | Standalone utility/diagnostic script not in runtime path |
 | `scripts/deprecated/legacy/mark_unread.py` | Likely-Unused | Standalone utility/diagnostic script not in runtime path |
 | `scripts/deprecated/legacy/startup.py` | Likely-Unused | Standalone utility/diagnostic script not in runtime path |
-| `start-servers.bat` | Used | Referenced startup/deployment flow |
 | `start-servers.ps1` | Used | Referenced startup/deployment flow |
 | `tailwind.config.ts` | Used | Runtime build/server path |
 | `trigger_ingestion.py` | Used | Referenced startup/deployment flow |

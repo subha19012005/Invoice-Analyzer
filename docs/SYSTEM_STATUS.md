@@ -56,24 +56,19 @@
 
 ## 🎯 STARTUP SOLUTIONS (NEW!)
 
-### Files Created
-| File | Purpose |
-|------|---------|
-| `START.bat` | Complete automated startup with everything |
-| `START.bat` | Starts backend + frontend |
-| `trigger_ingestion.py` | Manually trigger email processing |
-| `package.json` | Updated with npm scripts |
-| `QUICKSTART.md` | Complete startup documentation |
-| `STARTUP_GUIDE.md` | Detailed usage guide |
-| `HOW_TO_RUN.txt` | Visual startup guide |
+Canonical startup/run instructions are maintained in `QUICKSTART.md`.
 
-### Available Commands
+Primary commands:
+
 ```bash
-npm run start:all          # Start backend + frontend
-npm run start:backend      # Start only backend
-npm run start:frontend     # Start only frontend
+npm run start:all
+python trigger_ingestion.py
+```
 
-python trigger_ingestion.py  # Trigger email ingestion
+Windows alternative:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File start-servers.ps1
 ```
 
 ---
@@ -100,7 +95,7 @@ python trigger_ingestion.py  # Trigger email ingestion
 ## 🚀 HOW TO USE
 
 ### Quick Start
-1. **Double-click:** `START.bat`
+1. **Run:** `npm run start:all`
 2. **Wait:** 10 seconds for servers to start
 3. **Login:** reviewer / test123
 4. **Review:** Click on invoices in the queue
@@ -229,7 +224,7 @@ curl -X POST http://localhost:8000/ingestion/trigger \
 ## 🎉 NEXT STEPS
 
 1. **First time:** `npm install && npm install --save-dev concurrently`
-2. **To run:** Double-click `START.bat` OR `npm run start:all`
+2. **To run:** `npm run start:all` OR `powershell -ExecutionPolicy Bypass -File start-servers.ps1`
 3. **To add emails:** Copy invoice PDFs to Gmail inbox
 4. **To process:** `python trigger_ingestion.py`
 5. **To review:** Use the frontend app at http://localhost:8080

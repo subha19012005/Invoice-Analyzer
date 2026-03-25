@@ -1,5 +1,7 @@
 # Invoice Hub - Quick Start Guide
 
+> Canonical startup/run documentation: keep this file as the single source of truth.
+
 This guide shows you how to start the entire application (backend + frontend + email ingestion) in different ways.
 
 ## ✨ Quick Start (Recommended)
@@ -10,8 +12,8 @@ npm run start:all
 ```
 This starts both backend and frontend servers in the same terminal window with logs from both.
 
-### Option 2: Using Batch File (Windows - Opens separate windows)
-Double-click: **`START.bat`**
+### Option 2: Using PowerShell Script (Windows - Opens separate windows)
+Run: **`start-servers.ps1`**
 
 This opens two separate command windows:
 - Backend on port 8000
@@ -53,7 +55,7 @@ Once running, open your browser:
 ### If using `npm run start:all`:
 Press **Ctrl+C** in the terminal to stop both servers.
 
-### If using `START.bat`:
+### If using `start-servers.ps1`:
 Press **Ctrl+C** in each command window, or close the windows.
 
 ## 🔐 Default Login Credentials
@@ -69,9 +71,7 @@ Password: test123
 invoice-hub/
 ├── frontend/              # React + Vite frontend
 ├── backend/               # FastAPI backend
-├── START.bat             # Windows batch script to start everything
-├── start-servers.bat     # Alternative batch script
-├── start-servers.ps1     # PowerShell script
+├── start-servers.ps1     # PowerShell script to start servers
 ├── trigger_ingestion.py  # Python script to manually trigger email ingestion
 └── package.json          # npm scripts
 ```

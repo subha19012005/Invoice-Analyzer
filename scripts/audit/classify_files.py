@@ -10,7 +10,7 @@ runtime_prefixes = [
     'package.json','requirements.txt','vite.config.ts','tsconfig.json','tsconfig.app.json','tsconfig.node.json','tailwind.config.ts','postcss.config.js','eslint.config.js','components.json'
 ]
 
-startup_files = {'start-servers.bat','start-servers.ps1','START.bat','trigger_ingestion.py','HOW_TO_RUN.txt','QUICKSTART.md','README.md','docs/DEPLOYMENT_NEON.md'}
+startup_files = {'start-servers.ps1','trigger_ingestion.py','HOW_TO_RUN.txt','QUICKSTART.md','README.md','docs/DEPLOYMENT_NEON.md'}
 
 likely_legacy = {
     'scripts/legacy/check_db.py','scripts/legacy/invoice_ocr.py','scripts/legacy/mark_unread.py','scripts/legacy/startup.py',

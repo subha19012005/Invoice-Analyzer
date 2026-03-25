@@ -9,7 +9,7 @@
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  1. Open the project folder in File Explorer               │
-│  2. Double-click:  START.bat                               │
+│  2. Run:  powershell -ExecutionPolicy Bypass -File start-servers.ps1 │
 │  3. Wait 10 seconds                                        │
 │  4. Done! Browser opens automatically                      │
 │                                                             │
@@ -58,7 +58,7 @@
 │ 🛑 STOPPING SERVERS                                         │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  If using START.bat:                                        │
+│  If using start-servers.ps1:                                │
 │    - Close the command windows, or                         │
 │    - Press Ctrl+C in each window                           │
 │                                                             │
@@ -99,7 +99,7 @@
 
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
-║  🎉 That's it! Double-click START.bat and you're good to go! ║
+║  🎉 That's it! Run start-servers.ps1 and you're good to go! ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
 
