@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from database import get_db
-from models import SystemLog
+from models import SystemLog, User
 from typing import Optional
 from pydantic import BaseModel
+from routes.auth import get_current_user_sso, require_admin_sso
 
 router = APIRouter()
 
@@ -19,7 +20,8 @@ async def get_logs(
     username: Optional[str] = None,
     page: int = 1,
     page_size: int = 20,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_sso)
 ):
     try:
         query = db.query(SystemLog)
@@ -63,7 +65,11 @@ async def get_logs(
         )
 
 @router.get("/logs/recent")
-async def get_recent_logs(limit: int = 5, db: Session = Depends(get_db)):
+async def get_recent_logs(
+    limit: int = 5,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_sso)
+):
     try:
         logs = (
             db.query(SystemLog)
@@ -93,7 +99,8 @@ async def get_recent_logs(limit: int = 5, db: Session = Depends(get_db)):
 async def create_log(
     log_data: LogCreateSchema,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_sso)
 ):
     try:
         ip_address = log_data.ip_address or (request.client.host if request.client else None)

@@ -1,17 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User
-from config import SECRET_KEY, ALGORITHM
+from routes.auth import get_current_user_sso, require_admin_sso
 from pydantic import BaseModel
 from typing import Optional, List
-import jwt
 import bcrypt
 from datetime import datetime
 
 router = APIRouter()
-bearer_scheme = HTTPBearer(auto_error=False)
 
 class CreateReviewerRequest(BaseModel):
     username: str
@@ -35,40 +32,13 @@ class PaginatedUsersResponse(BaseModel):
     page: int
     page_size: int
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-    db: Session = Depends(get_db)
-) -> User:
-    if not credentials or credentials.scheme.lower() != "bearer":
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if not username:
-            raise HTTPException(status_code=401, detail="Invalid token")
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    user = db.query(User).filter(User.username == username).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-
-    return user
-
-def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return current_user
-
 @router.get("/users", response_model=PaginatedUsersResponse)
 async def get_users(
     role: Optional[str] = None,
     page: int = 1,
     page_size: int = 10,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin)
+    _: User = Depends(require_admin_sso)
 ):
     """Get all users with pagination"""
     query = db.query(User)
@@ -90,7 +60,7 @@ async def get_users(
 async def create_reviewer(
     data: CreateReviewerRequest,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin)
+    _: User = Depends(require_admin_sso)
 ):
     """Create a new reviewer account"""
     # Check if username exists
@@ -126,7 +96,7 @@ async def create_reviewer(
 async def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin)
+    _: User = Depends(require_admin_sso)
 ):
     """Delete a user (cannot delete admins)"""
     user = db.query(User).filter(User.id == user_id).first()
@@ -145,7 +115,7 @@ async def delete_user(
 async def get_user_count(
     role: Optional[str] = None,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin)
+    _: User = Depends(require_admin_sso)
 ):
     """Get user count by role"""
     query = db.query(User)
@@ -158,7 +128,7 @@ async def get_user_count(
 async def get_user(
     user_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin)
+    _: User = Depends(require_admin_sso)
 ):
     """Get user by ID"""
     user = db.query(User).filter(User.id == user_id).first()
