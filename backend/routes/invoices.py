@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
-from fastapi.responses import StreamingResponse, RedirectResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Invoice, LineItem, InvoiceAuditLog, EmailIngestionLog, User
@@ -11,7 +11,7 @@ import re
 from pydantic import BaseModel
 from googleapiclient.http import MediaIoBaseDownload
 from services.email_ingestion import process_emails_async, get_drive_service, process_manual_invoice_upload, log_ingestion
-from auth import verify_api_key
+from routes.auth import get_current_user_from_sso
 
 SECURITY_TERMS = [
     "security", "otp", "2fa", "mfa", "verification", "verify", "alert",
@@ -29,6 +29,14 @@ def classify_mail_category(subject: str, status: str) -> str:
     return "unknown"
 
 router = APIRouter()
+
+
+def ensure_role(current_user: User, allowed_roles: tuple[str, ...]) -> None:
+    if current_user.role not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to perform this action",
+        )
 
 # ============= PYDANTIC SCHEMAS =============
 
@@ -58,6 +66,12 @@ class InvoiceUpdateSchema(BaseModel):
     notes: Optional[str] = None
     reviewed_by: Optional[str] = None  # Username of the reviewer
 
+class LineItemUpdateSchema(BaseModel):
+    id: int
+    quantity: Optional[float] = None
+    unit_price: Optional[float] = None
+    total_price: Optional[float] = None
+
 class InvoiceDetailsUpdateSchema(BaseModel):
     invoice_number: Optional[str] = None
     vendor_name: Optional[str] = None
@@ -67,6 +81,7 @@ class InvoiceDetailsUpdateSchema(BaseModel):
     invoice_date: Optional[datetime] = None
     amount: Optional[float] = None
     tax: Optional[float] = None
+    line_items: Optional[List[LineItemUpdateSchema]] = None
 
 class InvoiceResponseSchema(BaseModel):
     id: int
@@ -92,8 +107,13 @@ class InvoiceResponseSchema(BaseModel):
 # ============= INVOICE ROUTES =============
 
 @router.post("/invoices", response_model=dict)
-async def create_invoice(invoice_data: InvoiceCreateSchema, db: Session = Depends(get_db)):
+async def create_invoice(
+    invoice_data: InvoiceCreateSchema,
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
+):
     """Create a new invoice from OCR data"""
+    ensure_role(current_user, ("admin",))
     try:
         # Create invoice
         new_invoice = Invoice(
@@ -145,9 +165,11 @@ async def get_invoices(
     status_filter: Optional[str] = None,
     page: int = 1,
     page_size: int = 10,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
 ):
     """Get all invoices with optional filtering"""
+    ensure_role(current_user, ("admin", "reviewer"))
     try:
         query = db.query(Invoice)
         
@@ -209,9 +231,11 @@ async def get_invoices(
 async def get_invoice_decision_history(
     page: int = 1,
     page_size: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
 ):
     """Get accepted/rejected invoices ordered by decision date"""
+    ensure_role(current_user, ("admin", "reviewer"))
     try:
         query = (
             db.query(Invoice)
@@ -270,8 +294,13 @@ async def get_invoice_decision_history(
         )
 
 @router.get("/invoices/{invoice_id}/file")
-async def get_invoice_file(invoice_id: int, db: Session = Depends(get_db)):
+async def get_invoice_file(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
+):
     """Stream invoice file from Google Drive for in-app preview (optimized with caching)"""
+    ensure_role(current_user, ("admin", "reviewer"))
     try:
         invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
 
@@ -348,8 +377,13 @@ async def get_invoice_file(invoice_id: int, db: Session = Depends(get_db)):
         )
 
 @router.get("/invoices/{invoice_id}")
-async def get_invoice(invoice_id: int, db: Session = Depends(get_db)):
+async def get_invoice(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
+):
     """Get a single invoice by ID"""
+    ensure_role(current_user, ("admin", "reviewer"))
     try:
         invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
         
@@ -401,9 +435,11 @@ async def get_invoice(invoice_id: int, db: Session = Depends(get_db)):
 async def update_invoice(
     invoice_id: int,
     update_data: InvoiceUpdateSchema,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
 ):
     """Update invoice status"""
+    ensure_role(current_user, ("admin", "reviewer"))
     try:
         invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
         
@@ -419,7 +455,7 @@ async def update_invoice(
         
         # If status is accepted or rejected, capture review information
         if update_data.status in ["accepted", "rejected"]:
-            invoice.reviewed_by = update_data.reviewed_by or "system"
+            invoice.reviewed_by = current_user.username
             invoice.reviewed_at = datetime.now()
         
         # Create audit log
@@ -451,9 +487,11 @@ async def update_invoice(
 async def update_invoice_details(
     invoice_id: int,
     update_data: InvoiceDetailsUpdateSchema,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
 ):
     """Update invoice editable fields"""
+    ensure_role(current_user, ("admin", "reviewer"))
     try:
         invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
 
@@ -480,6 +518,26 @@ async def update_invoice_details(
         if update_data.tax is not None:
             invoice.tax = update_data.tax
 
+        if update_data.line_items:
+            for item_data in update_data.line_items:
+                line_item = (
+                    db.query(LineItem)
+                    .filter(LineItem.id == item_data.id, LineItem.invoice_id == invoice_id)
+                    .first()
+                )
+
+                if line_item:
+                    if item_data.quantity is not None:
+                        line_item.quantity = item_data.quantity
+
+                    if item_data.unit_price is not None:
+                        line_item.unit_price = item_data.unit_price
+
+                    if item_data.total_price is not None:
+                        line_item.total_price = item_data.total_price
+                    else:
+                        line_item.total_price = (line_item.quantity or 0) * (line_item.unit_price or 0)
+
         invoice.total_amount = (invoice.amount or 0) + (invoice.tax or 0)
         invoice.updated_at = datetime.now()
 
@@ -501,10 +559,11 @@ async def update_invoice_details(
 @router.post("/ingestion/run")
 async def run_email_ingestion(
     background_tasks: BackgroundTasks,
-    api_key: str = Depends(verify_api_key),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
 ):
-    """Trigger email ingestion and OCR processing (API Key Required)"""
+    """Trigger email ingestion and OCR processing (admin only)"""
+    ensure_role(current_user, ("admin",))
     try:
         # Run ingestion in background
         background_tasks.add_task(process_emails_async)
@@ -522,10 +581,11 @@ async def run_email_ingestion(
 
 @router.post("/ingestion/run-sync")
 async def run_email_ingestion_sync(
-    api_key: str = Depends(verify_api_key),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
 ):
-    """Trigger email ingestion synchronously (API Key Required)"""
+    """Trigger email ingestion synchronously (admin only)"""
+    ensure_role(current_user, ("admin",))
     try:
         result = await process_emails_async()
         if isinstance(result, dict) and result.get("error"):
@@ -544,8 +604,12 @@ async def run_email_ingestion_sync(
         )
 
 @router.get("/invoices/status/stats")
-async def get_invoice_stats(db: Session = Depends(get_db)):
+async def get_invoice_stats(
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
+):
     """Get invoice statistics"""
+    ensure_role(current_user, ("admin", "reviewer"))
     try:
         total = db.query(Invoice).count()
         pending = db.query(Invoice).filter(Invoice.status == "pending").count()
@@ -570,8 +634,12 @@ async def get_invoice_stats(db: Session = Depends(get_db)):
         )
 
 @router.get("/ingestion-logs")
-async def get_ingestion_logs(db: Session = Depends(get_db)):
+async def get_ingestion_logs(
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
+):
     """Get email ingestion logs"""
+    ensure_role(current_user, ("admin",))
     try:
         logs = db.query(EmailIngestionLog).order_by(EmailIngestionLog.created_at.desc()).limit(100).all()
         
@@ -599,19 +667,20 @@ async def get_ingestion_logs(db: Session = Depends(get_db)):
 
 @router.post("/ingestion/trigger")
 async def trigger_email_ingestion(
-    api_key: str = Depends(verify_api_key),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
 ):
     """
     Trigger email ingestion process from Gmail
     
-    Requires: X-API-Key header with valid API key
+    Requires: authenticated admin user
     
     Returns:
     - Processed count
     - Total emails found
     - Status of each processed email
     """
+    ensure_role(current_user, ("admin",))
     try:
         result = await process_emails_async()
         if isinstance(result, dict) and result.get("error"):
@@ -635,10 +704,11 @@ async def trigger_email_ingestion(
 @router.post("/ingestion/manual-upload")
 async def manual_invoice_upload(
     file: UploadFile = File(...),
-    api_key: str = Depends(verify_api_key),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user_from_sso),
 ):
     """Upload invoice file manually and run OCR + Drive + DB + Excel logging flow."""
+    ensure_role(current_user, ("admin",))
     try:
         file_bytes = await file.read()
         if not file_bytes:
@@ -650,7 +720,7 @@ async def manual_invoice_upload(
         result = process_manual_invoice_upload(
             file_name=file.filename or "manual_upload",
             file_bytes=file_bytes,
-            uploaded_by="admin"
+            uploaded_by=current_user.username
         )
 
         return {

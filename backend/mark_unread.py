@@ -1,8 +1,10 @@
 import imaplib
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 EMAIL_USER = os.getenv("EMAIL_USER", "invoice.project01@gmail.com")
 EMAIL_PASS = os.getenv("EMAIL_PASS")

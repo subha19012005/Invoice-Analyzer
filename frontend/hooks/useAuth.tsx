@@ -1,19 +1,18 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '@/types';
-import { 
-  login as loginService, 
-  logout as logoutService, 
-  storeAuthData, 
-  clearAuthData,
-  getStoredToken,
-  getStoredUser
-} from '@/services/authService';
+import { fetchCurrentUser, logout as logoutService } from '@/services/authService';
+
+// NiFo SSO login URL — backend redirects to SSO provider
+// Configurable via VITE_SSO_LOGIN_URL env var
+const SSO_LOGIN_URL = import.meta.env.VITE_SSO_LOGIN_URL || '/auth/sso/login';
+const SSO_LOGOUT_URL = import.meta.env.VITE_SSO_LOGOUT_URL || '/auth/sso/logout';
+const ALLOW_LOCAL_LOGIN = String(import.meta.env.VITE_ALLOW_LOCAL_LOGIN || 'false').toLowerCase() === 'true';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  isForbidden: boolean;
   logout: () => Promise<void>;
 }
 
@@ -22,19 +21,42 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isForbidden, setIsForbidden] = useState(false);
+  const initialized = useRef(false); // guard against React StrictMode double-invoke
 
-  // Check for existing session on mount
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
     const initAuth = async () => {
       try {
-        const token = getStoredToken();
-        const storedUser = getStoredUser();
-        
-        if (token && storedUser) {
-          setUser(storedUser);
+        const currentUser = await fetchCurrentUser();
+
+        if (currentUser === null) {
+          if (ALLOW_LOCAL_LOGIN) {
+            if (!window.location.pathname.startsWith('/login')) {
+              window.location.replace('/login');
+              return;
+            }
+          } else {
+            window.location.replace(SSO_LOGIN_URL);
+            return;
+          }
+          return; // don't setIsLoading(false) — page is navigating away
         }
-      } catch (error) {
-        clearAuthData();
+
+        setUser(currentUser);
+      } catch (error: any) {
+        if (error.response?.status === 403) {
+          setIsForbidden(true);
+        } else {
+          if (ALLOW_LOCAL_LOGIN) {
+            window.location.replace('/login');
+            return;
+          }
+          window.location.replace(SSO_LOGIN_URL);
+          return;
+        }
       } finally {
         setIsLoading(false);
       }
@@ -43,40 +65,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const response = await loginService({ username, password });
-      storeAuthData(response);
-      setUser(response.user);
-    } catch (error) {
-      // Re-throw the error to be handled by the component
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   const logout = useCallback(async () => {
     setIsLoading(true);
     try {
-      await logoutService();
+      const centralLogoutUrl = await logoutService();
+      const redirectUrl = centralLogoutUrl || SSO_LOGOUT_URL;
+
       setUser(null);
+      setIsForbidden(false);
+      setIsLoading(false);
+
+      if (ALLOW_LOCAL_LOGIN) {
+        window.location.replace('/login');
+        return;
+      }
+
+      window.location.replace(redirectUrl);
+      return;
     } finally {
+      setUser(null);
+      setIsForbidden(false);
       setIsLoading(false);
     }
   }, []);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        isLoading,
-        login,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, isForbidden, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -84,8 +98,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

@@ -1,154 +1,129 @@
-# Invoice Hub - Automated Invoice Processing System
+# Invoice Hub
 
-A professional invoice management and processing system with role-based access control.
+Invoice Hub is a FastAPI + React application for invoice ingestion, review, and admin operations.
 
-## Features
+## What changed in this version
 
-- 🔐 **Secure Authentication** with JWT tokens and bcrypt password hashing
-- 👥 **Role-Based Access** (Admin and Reviewer roles)
-- 📊 **Admin Dashboard** for user management and system monitoring
-- 📋 **Invoice Review Queue** for efficient invoice processing
-- 📈 **Analytics & Reporting** for business insights
-- 🎨 **Modern UI** built with React, TypeScript, and Tailwind CSS
-- 🗄️ **Database Integration** with PostgreSQL and SQLAlchemy
+- Production auth is **SSO-first** (NiFo/TYN cookie validation).
+- Business APIs are protected on backend with role checks.
+- Frontend auth bootstraps from `GET /auth/me` (not local storage).
+- Local username/password login is available only when `ALLOW_LOCAL_LOGIN=true`.
+- Single shared env file: `invoice/.env`.
+- Mindee import compatibility added for Python 3.8 environments where `ClientV2` is unavailable.
+- Primary UI blue updated to `#0070C0`.
 
-## Tech Stack
+## Authentication model
 
-### Frontend
-- React 18.3.1 with TypeScript
-- Vite for fast development
-- Tailwind CSS for styling
-- shadcn/ui for components
-- React Router for navigation
-- TanStack Query for state management
+### Production
 
-### Backend
-- FastAPI for REST API
-- PostgreSQL for database
-- SQLAlchemy for ORM
-- JWT for authentication
-- bcrypt for password hashing
+1. User logs in on NiFo/TYN.
+2. Shared SSO cookie is sent to Invoice backend.
+3. Backend validates cookie using central endpoint (`SSO_VALIDATE_URL`).
+4. Backend maps central email to local `users` table.
+5. If no local user exists, backend returns `403`.
 
-## Quick Start
+### Local development fallback
 
-### Prerequisites
-- Node.js 16+ and npm
-- Python 3.8+ and pip
-- PostgreSQL database
+- Set `ALLOW_LOCAL_LOGIN=true` (and `VITE_ALLOW_LOCAL_LOGIN=true`) to enable `/login` page and `/auth/login`.
+- Keep this disabled in production.
 
-### Installation
+## Required `/auth/me` contract
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/subha19012005/Invoice-Analyzer.git
-   cd Invoice-Analyzer
-   ```
+`GET /auth/me`
 
-2. **Backend Setup**
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   python main.py
-   ```
+- `200`: authenticated + authorized
+- `401`: not logged in centrally
+- `403`: logged in centrally but not onboarded locally
 
-3. **Frontend Setup**
-   ```bash
-   npm install
-   npm run dev
-   ```
+Sample success:
 
-### Default Credentials
-- **Admin**: username `admin`, password `admin123`
-- **Reviewer**: username `reviewer`, password `reviewer123`
-
-## Project Structure
-
-```
-invoice-hub/
-├── backend/                 # FastAPI backend
-│   ├── main.py            # Application entry point
-│   ├── models.py          # Database models
-│   ├── routes/            # API routes
-│   └── database.py        # Database configuration
-├── src/                   # React frontend
-│   ├── components/         # Reusable components
-│   ├── pages/             # Page components
-│   ├── hooks/             # Custom hooks
-│   ├── services/          # API services
-│   └── types/             # TypeScript types
-└── public/                # Static assets
+```json
+{
+  "authenticated": true,
+  "authorized": true,
+  "user": {
+    "email": "user@company.com",
+    "name": "Ravi",
+    "role": "admin"
+  }
+}
 ```
 
-## API Documentation
+## Single `.env` usage
 
-Once the backend is running, visit:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+Use only one env file at:
 
-## Contributing
+- `invoice/.env`
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+### Minimum env keys
 
-## License
+```env
+# Frontend
+VITE_SSO_LOGIN_URL=/auth/sso/login
+VITE_SSO_LOGOUT_URL=/auth/sso/logout
+VITE_ALLOW_LOCAL_LOGIN=false
 
-This project is licensed under the MIT License.
+# Backend auth
+SSO_ENABLED=true
+SSO_LOGIN_URL=https://<central>/login
+SSO_VALIDATE_URL=https://<central>/api/sso/me
+SSO_COOKIE_NAME=sso_session
+SSO_LOGOUT_URL=https://<central>/logout
+ALLOW_LOCAL_LOGIN=false
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+# DB (Neon recommended)
+DATABASE_URL=postgresql://<user>:<password>@<host>/<db>?sslmode=require
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+# Local DB fallback (used only if DATABASE_URL is empty)
+DB_USER=postgres
+DB_PASSWORD=postgres123
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=invoice
 ```
 
-**Edit a file directly in GitHub**
+## Neon DB integration
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+The backend already prioritizes `DATABASE_URL`.
 
-**Use GitHub Codespaces**
+If `DATABASE_URL` is set, it is used directly (Neon recommended). If not set, backend falls back to `DB_*` values.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Setup and run
 
-## What technologies are used for this project?
+### Install frontend dependencies
 
-This project is built with:
+```powershell
+Set-Location "c:\Users\USER\Desktop\YZone\invoice(Gayathri)\invoice"
+npm install
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Create Python venv and install backend dependencies
 
-## How can I deploy this project?
+```powershell
+Set-Location "c:\Users\USER\Desktop\YZone\invoice(Gayathri)\invoice"
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+### Run project
 
-## Can I connect a custom domain to my Lovable project?
+```powershell
+Set-Location "c:\Users\USER\Desktop\YZone\invoice(Gayathri)\invoice"
+npm run start:all
+```
 
-Yes, you can!
+- Frontend: `http://localhost:8080`
+- Backend: `http://localhost:8000`
+- API docs: `http://localhost:8000/docs`
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Mindee note for Python 3.8
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
-=======
-# Invoice-Analyzer
->>>>>>> ca980f6beaee7b16ef49e17e2f418fe5676565ea
+If your installed Mindee SDK does not expose `ClientV2`, backend startup no longer crashes on import. OCR ingestion logs a compatibility error until a compatible SDK is used.
+
+## Security reminders
+
+- Do not trust role or auth state from frontend.
+- Do not open invoice APIs without backend auth.
+- Do not pass auth token in query string.
+- Use one production auth system (central SSO cookie validation).

@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
+const ALLOW_LOCAL_LOGIN = String(import.meta.env.VITE_ALLOW_LOCAL_LOGIN || 'false').toLowerCase() === 'true';
+const SSO_LOGIN_URL = import.meta.env.VITE_SSO_LOGIN_URL || '/auth/sso/login';
+
 const Index = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -17,7 +20,11 @@ const Index = () => {
           navigate('/reviewer', { replace: true });
         }
       } else {
-        navigate('/login', { replace: true });
+        if (ALLOW_LOCAL_LOGIN) {
+          navigate('/login', { replace: true });
+        } else {
+          window.location.replace(SSO_LOGIN_URL);
+        }
       }
     }
   }, [isAuthenticated, user, isLoading, navigate]);

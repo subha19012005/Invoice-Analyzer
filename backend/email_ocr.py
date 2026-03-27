@@ -27,10 +27,9 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 
-# Load environment variables from project root .env first, then local fallback
+# Load environment variables from the project root .env
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
-load_dotenv()
 
 # ================= CONFIGURATION =================
 # 📧 Email Config

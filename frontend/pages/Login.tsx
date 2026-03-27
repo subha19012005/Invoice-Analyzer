@@ -1,183 +1,81 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Loader2, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { loginLocal } from '@/services/authService';
 
-const Login: React.FC = () => {
+const ALLOW_LOCAL_LOGIN = String(import.meta.env.VITE_ALLOW_LOCAL_LOGIN || 'false').toLowerCase() === 'true';
+const SSO_LOGIN_URL = import.meta.env.VITE_SSO_LOGIN_URL || '/auth/sso/login';
+
+const Login = () => {
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const { login } = useAuth();
-  const navigate = useNavigate();
-  const errorRef = useRef<string>('');
 
-  // Debug error state changes
   useEffect(() => {
-    console.log('Error state changed:', error);
-    errorRef.current = error;
-  }, [error]);
+    if (!ALLOW_LOCAL_LOGIN) {
+      window.location.replace(SSO_LOGIN_URL);
+    }
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Form submitted with:', { username, password });
-    
-    // Only clear error on new submission, not on re-renders
-    if (isSubmitting) return;
-    
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setError('');
-    
-    if (!username.trim()) {
-      setError('Please enter your username');
-      return;
-    }
-    
-    if (!password.trim()) {
-      setError('Please enter your password');
-      return;
-    }
+    setIsLoading(true);
 
-    setIsSubmitting(true);
-    
     try {
-      console.log('Attempting login...');
-      await login(username, password);
-      console.log('Login successful');
-      
-      // Get user from sessionStorage to determine redirect
-      const storedUser = sessionStorage.getItem('user');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        if (user.role === 'admin') {
-          navigate('/admin');
-        } else {
-          navigate('/reviewer');
-        }
-      }
-    } catch (err: any) {
-      console.log('Login error:', err);
-      let errorMessage = 'Login failed. Please try again.';
-      
-      if (err.response?.data?.detail) {
-        const backendError = err.response.data.detail;
-        if (backendError === 'User not found') {
-          errorMessage = 'Username not found. Please check your username.';
-        } else if (backendError === 'Incorrect password') {
-          errorMessage = 'Incorrect password. Please try again.';
-        } else if (backendError === 'Username and password are required') {
-          errorMessage = 'Please enter both username and password.';
-        } else {
-          errorMessage = backendError;
-        }
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      console.log('Setting error message:', errorMessage);
-      setError(errorMessage);
-      
-      // Prevent form from being submitted again immediately
-      setTimeout(() => {
-        setIsSubmitting(false);
-      }, 1000);
+      const user = await loginLocal({ username, password });
+      navigate(user.role === 'admin' ? '/admin' : '/reviewer', { replace: true });
+    } catch (submitError: any) {
+      setError(submitError?.response?.data?.detail || 'Login failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md">
-        {/* Logo and Brand */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary mb-4">
-            <FileText className="w-8 h-8 text-primary-foreground" />
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 shadow-card">
+        <h1 className="text-2xl font-semibold text-foreground">Invoice Login</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Local development login is enabled.</p>
+
+        <form className="mt-6 space-y-4" onSubmit={onSubmit}>
+          <div>
+            <label htmlFor="username" className="mb-1 block text-sm font-medium text-foreground">Username</label>
+            <input
+              id="username"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              autoComplete="username"
+              required
+            />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Invoice Analyser</h1>
-          <p className="text-muted-foreground mt-1">Automated Invoice Processing System</p>
-        </div>
 
-        {/* Login Card */}
-        <Card className="shadow-card border-border">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl text-center">Welcome back</CardTitle>
-            <CardDescription className="text-center">
-              Enter your credentials to access your dashboard
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="flex items-center justify-between p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    <span>{error}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setError('')}
-                    className="text-destructive/60 hover:text-destructive transition-colors"
-                  >
-                    ×
-                  </button>
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  disabled={isSubmitting}
-                  autoComplete="username"
-                  className="h-11"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isSubmitting}
-                  autoComplete="current-password"
-                  className="h-11"
-                />
-              </div>
+          <div>
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-foreground">Password</label>
+            <input
+              id="password"
+              type="password"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </div>
 
-              <Button 
-                type="submit" 
-                className="w-full h-11 mt-2"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  'Sign in'
-                )}
-              </Button>
-            </form>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-            
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          Secure access • PostgreSQL ready backend
-        </p>
+          <button
+            type="submit"
+            className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+            disabled={isLoading}
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sign In'}
+          </button>
+        </form>
       </div>
     </div>
   );

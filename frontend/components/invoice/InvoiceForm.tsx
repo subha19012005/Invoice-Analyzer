@@ -23,35 +23,92 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   isSubmitting,
 }) => {
   const [formData, setFormData] = useState<InvoiceUpdateForm>({
-  invoiceNumber: "",
-  invoiceDate: "",
-  vendorName: "",
-  poNumber: "",
-  amount: 0,
-  tax: 0,
-});
-
-useEffect(() => {
-  const formattedDate = invoice.invoiceDate
-    ? invoice.invoiceDate.substring(0, 10) // Extract YYYY-MM-DD
-    : "";
-
-  setFormData({
-    invoiceNumber: invoice.invoiceNumber,
-    invoiceDate: formattedDate,
-    vendorName: invoice.vendorName,
-    poNumber: invoice.poNumber,
-    amount: invoice.amount,
-    tax: invoice.tax,
+    invoiceNumber: "",
+    invoiceDate: "",
+    vendorName: "",
+    poNumber: "",
+    amount: 0,
+    tax: 0,
   });
-}, [invoice]);
+  const [editableLineItems, setEditableLineItems] = useState(invoice.lineItems);
+
+  useEffect(() => {
+    const formattedDate = invoice.invoiceDate
+      ? invoice.invoiceDate.substring(0, 10)
+      : "";
+
+    setFormData({
+      invoiceNumber: invoice.invoiceNumber,
+      invoiceDate: formattedDate,
+      vendorName: invoice.vendorName,
+      poNumber: invoice.poNumber,
+      amount: invoice.amount,
+      tax: invoice.tax,
+    });
+    setEditableLineItems(invoice.lineItems);
+  }, [invoice]);
 
   const handleChange = (field: keyof InvoiceUpdateForm, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleUnitPriceChange = (lineItemId: string, unitPrice: number) => {
+    setEditableLineItems((prev) => prev.map((item) => {
+      if (item.id !== lineItemId) {
+        return item;
+      }
+
+      const updatedUnitPrice = Number.isFinite(unitPrice) ? unitPrice : 0;
+      return {
+        ...item,
+        unitPrice: updatedUnitPrice,
+        total: item.quantity * updatedUnitPrice,
+      };
+    }));
+  };
+
+  const handleQuantityChange = (lineItemId: string, quantity: number) => {
+    setEditableLineItems((prev) => prev.map((item) => {
+      if (item.id !== lineItemId) {
+        return item;
+      }
+
+      const updatedQuantity = Number.isFinite(quantity) ? quantity : 0;
+      return {
+        ...item,
+        quantity: updatedQuantity,
+        total: updatedQuantity * item.unitPrice,
+      };
+    }));
+  };
+
+  const handleTotalChange = (lineItemId: string, total: number) => {
+    setEditableLineItems((prev) => prev.map((item) => {
+      if (item.id !== lineItemId) {
+        return item;
+      }
+
+      const updatedTotal = Number.isFinite(total) ? total : 0;
+      const recalculatedUnitPrice = item.quantity > 0 ? updatedTotal / item.quantity : item.unitPrice;
+
+      return {
+        ...item,
+        unitPrice: recalculatedUnitPrice,
+        total: updatedTotal,
+      };
+    }));
+  };
+
   const handleSave = () => {
-    onSave(formData);
+    onSave({
+      ...formData,
+      lineItems: editableLineItems.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        total: item.total,
+      })),
+    });
   };
 
   const subAmount = formData.amount - formData.tax;
@@ -126,7 +183,7 @@ useEffect(() => {
         </div>
 
         {/* Line Items (Read-only for now) */}
-        {invoice.lineItems.length > 0 && (
+        {editableLineItems.length > 0 && (
           <>
             <Separator />
             <div>
@@ -142,12 +199,39 @@ useEffect(() => {
                     </tr>
                   </thead>
                   <tbody>
-                    {invoice.lineItems.map((item) => (
+                    {editableLineItems.map((item) => (
                       <tr key={item.id} className="border-t border-border">
                         <td className="p-3">{item.description}</td>
-                        <td className="p-3 text-right">{item.quantity}</td>
-                        <td className="p-3 text-right">₹{item.unitPrice.toFixed(2)}</td>
-                        <td className="p-3 text-right font-medium">₹{item.total.toFixed(2)}</td>
+                        <td className="p-3 text-right">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.quantity}
+                            onChange={(e) => handleQuantityChange(item.id, parseFloat(e.target.value) || 0)}
+                            disabled={isSubmitting}
+                            className="h-8 text-right"
+                          />
+                        </td>
+                        <td className="p-3 text-right">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.unitPrice}
+                            onChange={(e) => handleUnitPriceChange(item.id, parseFloat(e.target.value) || 0)}
+                            disabled={isSubmitting}
+                            className="h-8 text-right"
+                          />
+                        </td>
+                        <td className="p-3 text-right font-medium">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.total}
+                            onChange={(e) => handleTotalChange(item.id, parseFloat(e.target.value) || 0)}
+                            disabled={isSubmitting}
+                            className="h-8 text-right"
+                          />
+                        </td>
                       </tr>
                     ))}
                   </tbody>

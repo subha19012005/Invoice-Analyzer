@@ -4,6 +4,7 @@ import datetime
 import io
 import os
 import pickle
+from pathlib import Path
 from email.header import decode_header
 from dotenv import load_dotenv
 
@@ -15,7 +16,14 @@ from openpyxl import Workbook, load_workbook
 import psycopg2
 
 # --- Mindee ---
-from mindee import ClientV2, InferenceParameters, BytesInput
+try:
+    from mindee import ClientV2, InferenceParameters, BytesInput
+    MINDEE_V2_AVAILABLE = True
+except ImportError:
+    ClientV2 = None
+    InferenceParameters = None
+    BytesInput = None
+    MINDEE_V2_AVAILABLE = False
 
 # --- Google Drive ---
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -26,7 +34,8 @@ from googleapiclient.http import MediaIoBaseUpload
 # =====================================================
 # LOAD ENV
 # =====================================================
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 EMAIL_USER = os.getenv("EMAIL_USER")
 EMAIL_PASS = os.getenv("EMAIL_PASS")
@@ -86,6 +95,9 @@ drive_service = get_drive_service()
 # OCR EXTRACTION (MINDEE CUSTOM MODEL)
 # =====================================================
 def ocr_and_extract_data(file_name, file_bytes):
+    if not MINDEE_V2_AVAILABLE:
+        print("❌ Mindee SDK in this environment does not support ClientV2. Please use a compatible SDK version for OCR ingestion.")
+        return None
 
     mindee_client = ClientV2(MINDEE_API_KEY)
 

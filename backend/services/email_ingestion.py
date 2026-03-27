@@ -7,7 +7,17 @@ import os
 import pickle
 import time
 from email.header import decode_header
-from mindee import ClientV2, InferenceParameters, BytesInput
+try:
+    from mindee import ClientV2, InferenceParameters, BytesInput
+    MINDEE_V2_AVAILABLE = True
+except ImportError:
+    ClientV2 = None
+    InferenceParameters = None
+    try:
+        from mindee.input import BytesInput
+    except ImportError:
+        BytesInput = None
+    MINDEE_V2_AVAILABLE = False
 from sqlalchemy.orm import Session
 from models import Invoice, LineItem, EmailIngestionLog
 from database import SessionLocal
@@ -115,6 +125,13 @@ def process_manual_invoice_upload(file_name: str, file_bytes: bytes, uploaded_by
     if not file_name.lower().endswith(ALLOWED_EXTENSIONS):
         raise ValueError("Unsupported file type for invoice upload")
 
+    ocr_capable_extensions = ('.pdf', '.jpg', '.jpeg', '.png', '.webp')
+    if not file_name.lower().endswith(ocr_capable_extensions):
+        raise ValueError(
+            "Manual invoice upload supports OCR files only: PDF/JPG/JPEG/PNG/WEBP. "
+            "CSV/Excel/DOC files are not OCR-ingested in this flow."
+        )
+
     ocr_data = ocr_and_extract_data(file_name, file_bytes)
     if not ocr_data:
         raise ValueError("OCR extraction failed")
@@ -206,6 +223,10 @@ def get_drive_service():
 
 def ocr_and_extract_data(file_name: str, file_bytes: bytes) -> Dict:
     """Extract invoice data using Mindee OCR with retry logic"""
+    if not MINDEE_V2_AVAILABLE:
+        logger.error("Mindee SDK does not expose ClientV2 in this environment. Install a compatible version or disable OCR ingestion.")
+        return {}
+
     max_retries = 3
     try:
         for attempt in range(max_retries):

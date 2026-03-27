@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Invoice, EmailIngestionLog
+from models import Invoice, EmailIngestionLog, User
 from datetime import datetime, timedelta
+from routes.auth import require_admin_sso, require_reviewer_or_admin
 
 SECURITY_TERMS = [
     "security", "otp", "2fa", "mfa", "verification", "verify", "alert",
@@ -18,7 +19,10 @@ def classify_non_invoice_mail(subject: str) -> str:
 router = APIRouter()
 
 @router.get("/metrics/admin")
-async def get_admin_metrics(db: Session = Depends(get_db)):
+async def get_admin_metrics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_sso)
+):
     try:
         email_logs_query = db.query(EmailIngestionLog).filter(
             ~EmailIngestionLog.email_subject.like("Manual Upload%")
@@ -49,7 +53,11 @@ async def get_admin_metrics(db: Session = Depends(get_db)):
         )
 
 @router.get("/metrics/reviewer")
-async def get_reviewer_metrics(db: Session = Depends(get_db)):
+async def get_reviewer_metrics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_reviewer_or_admin)
+):
+    """Get reviewer metrics - requires reviewer or admin role"""
     try:
         pending = db.query(Invoice).filter(Invoice.status == "pending").count()
         in_review = db.query(Invoice).filter(Invoice.status == "in_review").count()
@@ -77,7 +85,12 @@ async def get_reviewer_metrics(db: Session = Depends(get_db)):
         )
 
 @router.get("/metrics/trends")
-async def get_processing_trends(period: str = "week", db: Session = Depends(get_db)):
+async def get_processing_trends(
+    period: str = "week",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_reviewer_or_admin)
+):
+    """Get processing trends - requires reviewer or admin role"""
     try:
         days = 7 if period == "week" else 30
         end_date = datetime.utcnow().date()

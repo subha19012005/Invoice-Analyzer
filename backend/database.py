@@ -6,10 +6,9 @@ from urllib.parse import quote_plus
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables (.env at project root first, then local fallback)
+# Load environment variables from the project root .env
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
-load_dotenv()
 
 # Prefer full DATABASE_URL (for Neon/hosted DBs), fallback to DB_* env vars
 database_url = os.getenv("DATABASE_URL", "").strip()

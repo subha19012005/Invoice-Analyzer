@@ -46,7 +46,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
 
   const handleLogout = async () => {
     await logout();
-    window.location.href = '/login';
   };
 
   const isActive = (path: string) => {

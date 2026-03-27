@@ -17,7 +17,7 @@
         --popover: 0 0% 100%;
         --popover-foreground: 222 47% 11%;
         /* Primary - Professional Blue */
-        --primary: 221 83% 53%;
+        --primary: 205 100% 38%;
         --primary-foreground: 210 40% 98%;
         /* Secondary - Soft Gray */
         --secondary: 210 20% 96%;
@@ -38,7 +38,7 @@
         --warning: 38 92% 50%;
         --warning-foreground: 0 0% 100%;
         /* Info - Blue */
-        --info: 199 89% 48%;
+        --info: 205 100% 38%;
         --info-foreground: 0 0% 100%;
         /* Pending - Purple */
         --pending: 262 83% 58%;
@@ -46,19 +46,19 @@
         /* Borders */
         --border: 214 32% 91%;
         --input: 214 32% 91%;
-        --ring: 221 83% 53%;
+        --ring: 205 100% 38%;
         --radius: 0.5rem;
         /* Sidebar - Light Blue Powder */
         --sidebar-background: 207 60% 80%;
         --sidebar-foreground: 0 0% 0%;
-        --sidebar-primary: 221 83% 53%;
+        --sidebar-primary: 205 100% 38%;
         --sidebar-primary-foreground: 0 0% 0%;
         --sidebar-accent: 199 89% 48%;
         --sidebar-accent-foreground: 0 0% 0%;
         --sidebar-border: 214 32% 91%;
-        --sidebar-ring: 221 83% 53%;
+        --sidebar-ring: 205 100% 38%;
         /* Custom gradients */
-        --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%) 0%, hsl(199 89% 48%) 100%);
+        --gradient-primary: linear-gradient(135deg, hsl(205 100% 38%) 0%, hsl(205 86% 48%) 100%);
         --gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 76% 46%) 100%);
         --gradient-warning: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(38 92% 60%) 100%);
         --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(0 84% 70%) 100%);
@@ -75,7 +75,7 @@
         --card-foreground: 210 40% 98%;
         --popover: 222 47% 9%;
         --popover-foreground: 210 40% 98%;
-        --primary: 221 83% 60%;
+        --primary: 205 95% 45%;
         --primary-foreground: 222 47% 11%;
         --secondary: 217 33% 17%;
         --secondary-foreground: 210 40% 98%;

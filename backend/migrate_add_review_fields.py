@@ -10,7 +10,6 @@ from pathlib import Path
 # Load environment variables
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
-load_dotenv()
 
 # Prefer DATABASE_URL (Neon/hosted), fallback to DB_*
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()

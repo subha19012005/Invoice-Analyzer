@@ -7,8 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
-load_dotenv()
+load_dotenv(BASE_DIR / ".env", override=True)
 
 # ============= DATABASE =============
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
@@ -46,7 +45,17 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# ============= CORS =============
+# ============= SSO =============
+SSO_ENABLED = os.getenv("SSO_ENABLED", "true").strip().lower() in ("1", "true", "yes")
+SSO_LOGIN_URL = os.getenv("SSO_LOGIN_URL", "").strip()
+SSO_COOKIE_NAME = os.getenv("SSO_COOKIE_NAME", os.getenv("SSO_SHARED_COOKIE_NAME", "sso_session")).strip()
+SSO_SHARED_COOKIE_NAME = SSO_COOKIE_NAME
+SSO_VALIDATE_URL = os.getenv("SSO_VALIDATE_URL", "").strip()
+SSO_VALIDATE_TIMEOUT_SECONDS = float(os.getenv("SSO_VALIDATE_TIMEOUT_SECONDS", "5"))
+SSO_LOGOUT_URL = os.getenv("SSO_LOGOUT_URL", "").strip()
+ALLOW_LOCAL_LOGIN = os.getenv("ALLOW_LOCAL_LOGIN", "false").strip().lower() in ("1", "true", "yes")
+
+
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:8080",

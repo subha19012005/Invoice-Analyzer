@@ -148,6 +148,12 @@ export const updateInvoice = async (
     po_number: data.poNumber,
     amount: data.amount,
     tax: data.tax,
+    line_items: data.lineItems?.map((item) => ({
+      id: Number(item.id),
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      total_price: item.total,
+    })),
   });
 
   const refreshed = await apiClient.get(`/invoices/${id}`);

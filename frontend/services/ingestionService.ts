@@ -1,6 +1,11 @@
 import { apiClient } from './api';
 
 const toReadableError = (error: any, fallback: string): string => {
+  const statusCode = error?.response?.status;
+  if (statusCode === 403) {
+    return 'Email ingestion is admin-only. Switch to admin role and try again.';
+  }
+
   const detail = error?.response?.data?.detail;
 
   if (typeof detail === 'string' && detail.trim()) {

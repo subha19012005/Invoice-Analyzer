@@ -1,54 +1,43 @@
 import axios from 'axios';
 
-// Base API configuration
-// This will be updated to point to the actual PostgreSQL-backed API
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Exported for legacy imports (e.g. ReviewQueue file URL construction)
+export const API_BASE_URL = '';
 
-// Create axios instance with default config
+// Single axios instance — all requests use relative paths via Vite proxy
+// withCredentials sends cookies; SSO identity comes from proxy-injected headers
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: '',
+  withCredentials: true,
   timeout: 30000,
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor to add auth token
+// Strip Content-Type for FormData uploads
 apiClient.interceptors.request.use(
   (config) => {
     if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
-      if (config.headers) {
-        delete (config.headers as any)['Content-Type'];
-      }
+      delete (config.headers as any)['Content-Type'];
     }
-
-    const token = sessionStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    
-    // Add API key for email ingestion endpoints
-    const apiKey = import.meta.env.VITE_API_KEY || 'invoice-hub-secret-key-2024';
-    if (apiKey) {
-      config.headers['x-api-key'] = apiKey;
-    }
-    
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor for error handling
+// Response interceptor — skip /auth/* routes (handled by useAuth)
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Clear auth state and redirect to login
-      sessionStorage.removeItem('authToken');
-      sessionStorage.removeItem('user');
-      window.location.href = '/login';
+    const url: string = error.config?.url || '';
+    const isAuthRoute = url.includes('/auth/');
+
+    if (!isAuthRoute) {
+      if (error.response?.status === 401) {
+        // Redirect to NiFo SSO login via backend
+        const ssoUrl = import.meta.env.VITE_SSO_LOGIN_URL || '/auth/sso/login';
+        window.location.replace(ssoUrl);
+      } else if (error.response?.status === 403) {
+        window.location.replace('/not-authorized');
+      }
     }
     return Promise.reject(error);
   }
